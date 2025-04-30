@@ -7,10 +7,16 @@ export interface StateConfig<T extends object> {
 }
 
 export interface StateOptions {
-  name?: string;
-  debug?: boolean;
-  persistence?: boolean;
-  middleware?: Middleware[];
+  devTools?: boolean;
+  storage?: StorageOptions;
+}
+
+export interface StorageOptions {
+  key: string;
+  version: string;
+  serialize?: (data: unknown) => string;
+  deserialize?: (data: string) => { version: string; data: unknown };
+  migrations?: Record<string, (data: unknown) => unknown>;
 }
 
 // Action types
@@ -19,7 +25,7 @@ export type AsyncAction<T> = (state: T) => Promise<Partial<T>>;
 export type StateUpdate<T> = Partial<T>;
 
 // Selector types
-export type Selector<T, S> = (state: T) => S;
+export type Selector<T, R> = (state: T) => R;
 
 // Middleware types
 export type Middleware<T = any> = (
@@ -44,7 +50,6 @@ export interface INextStateError {
 export interface StateSnapshot<T> {
   state: T;
   timestamp: number;
-  action?: string;
 }
 
 // Storage interface
@@ -56,7 +61,7 @@ export interface Storage {
 
 // Dev tools types
 export type DeepReadonly<T> = {
-  readonly [P in keyof T]: DeepReadonly<T[P]>;
+  readonly [P in keyof T]: T[P] extends object ? DeepReadonly<T[P]> : T[P];
 };
 
 export interface PerformanceMetrics {
@@ -64,3 +69,49 @@ export interface PerformanceMetrics {
   renderTime: number;
   memoryUsage: number;
 }
+
+// Utility types
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+export type EqualityFn<T> = (a: T, b: T) => boolean;
+
+// Server state types
+export interface ServerState<T> {
+  get(): Promise<T>;
+  set(update: DeepPartial<T>): Promise<void>;
+  subscribe(listener: () => void): () => void;
+  revalidate(tags?: string[]): Promise<void>;
+}
+
+// Performance monitoring types
+export interface PerformanceMonitor {
+  now(): number;
+  track(event: string, duration: number): void;
+  getMetrics(): {
+    updates: number;
+    avgUpdateTime: number;
+    lastUpdateTime: number;
+  };
+}
+
+// Listener set type
+export interface ListenerSet<T> {
+  add(listener: (state: T) => void): void;
+  delete(listener: (state: T) => void): void;
+  notify(state: T, performance: PerformanceMonitor): void;
+}
+
+export type NextStateConfig<T extends object> = StateConfig<T>;
+export type NextStateHook<T extends object> = (config: NextStateConfig<T>) => T;
+
+export type NextStateError = INextStateError;
+export type EnhancedMiddleware<T> = Middleware<T>;
+export type StorageConfig<T> = StorageOptions;
+export type StorageAdapter<T> = Storage;
+export type MigrationFn<T> = (data: T) => T;
+
+export type NextStateStorageConfig<T> = StorageConfig<T>;
+export type NextStateStorageAdapter<T> = StorageAdapter<T>;
+export type NextStateMigrationFn<T> = MigrationFn<T>;

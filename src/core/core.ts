@@ -4,7 +4,7 @@ import type {
   Action,
   Selector,
   StateOptions,
-  NextStateError as INextStateError,
+  INextStateError,
   EqualityFn,
   DeepPartial,
   DeepReadonly,
@@ -26,7 +26,7 @@ export class NextStateError extends Error implements INextStateError {
 }
 
 /*#__PURE__*/
-export function create<T extends object>(config: StateConfig<T>) {
+export function createNextState<T extends object>(config: StateConfig<T>) {
   // Initialize utilities
   const performance = createPerformanceMonitor();
   const debugLogger = createDebugLogger(!!config.options?.devTools);
@@ -127,7 +127,10 @@ export function create<T extends object>(config: StateConfig<T>) {
 
       Promise.resolve().then(() => {
         try {
-          const nextState = pendingUpdates.reduce((acc, update) => deepMerge(acc, update), state);
+          const nextState = pendingUpdates.reduce(
+            (acc, update) => deepMerge(acc, update as T),
+            state as T
+          );
 
           state = nextState as DeepReadonly<T>;
 
@@ -175,13 +178,13 @@ export function create<T extends object>(config: StateConfig<T>) {
   // Enhanced selector hook with memoization
   function useSelector<R>(selector: Selector<T, R>, equalityFn: EqualityFn<R> = Object.is): R {
     const stableSelector = useCallback(selector, []); // Memoize selector
-    const [value, setValue] = useState(() => stableSelector(state));
+    const [value, setValue] = useState(() => stableSelector(state as T));
     const prevValue = useRef(value);
     const prevSelector = useRef(stableSelector);
 
     useEffect(() => {
       if (prevSelector.current !== stableSelector) {
-        const newValue = stableSelector(state);
+        const newValue = stableSelector(state as T);
         if (!equalityFn(prevValue.current, newValue)) {
           prevValue.current = newValue;
           setValue(newValue);
@@ -193,7 +196,7 @@ export function create<T extends object>(config: StateConfig<T>) {
 
     useEffect(() => {
       const listener = (nextState: DeepReadonly<T>) => {
-        const nextValue = stableSelector(nextState);
+        const nextValue = stableSelector(nextState as T);
         if (!equalityFn(prevValue.current, nextValue)) {
           prevValue.current = nextValue;
           setValue(nextValue);
@@ -232,3 +235,7 @@ export function create<T extends object>(config: StateConfig<T>) {
     getMetrics: () => performance.getMetrics(),
   };
 }
+
+// Export the create function as default and named
+export default createNextState;
+export { createNextState as create };

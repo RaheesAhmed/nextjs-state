@@ -1,6 +1,4 @@
 export { createNextState } from './create-next-state';
-export { createStore } from '../store/store';
-export { createMiddleware } from '../middleware/middleware-registry';
 
 // Re-export core types
 export type {

@@ -1,4 +1,4 @@
-import type { EnhancedMiddleware, NextStateError } from './types';
+import type { EnhancedMiddleware, NextStateError } from '../types/types';
 
 export class MiddlewareRegistry<T extends Record<string, unknown>> {
   private middlewares: Map<string, EnhancedMiddleware<T>> = new Map();
@@ -24,8 +24,9 @@ export class MiddlewareRegistry<T extends Record<string, unknown>> {
   }
 
   async executeOnStateChange(prev: T, next: T): Promise<void> {
-    const sortedMiddlewares = Array.from(this.middlewares.values())
-      .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    const sortedMiddlewares = Array.from(this.middlewares.values()).sort(
+      (a, b) => (b.priority || 0) - (a.priority || 0)
+    );
 
     for (const middleware of sortedMiddlewares) {
       try {

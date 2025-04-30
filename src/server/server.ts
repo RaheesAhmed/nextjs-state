@@ -1,4 +1,4 @@
-import type { DeepPartial, StateConfig, StateSnapshot } from './types';
+import type { DeepPartial, StateConfig, StateSnapshot } from '../types/types';
 
 // Server-side state container
 const SERVER_STATE = new Map<string, unknown>();
@@ -37,8 +37,7 @@ export class ServerState<T extends object> {
     if (
       cached &&
       !revalidate &&
-      (!this.options.cache?.ttl ||
-        now - cached.timestamp < this.options.cache.ttl)
+      (!this.options.cache?.ttl || now - cached.timestamp < this.options.cache.ttl)
     ) {
       return cached.value;
     }
@@ -54,11 +53,11 @@ export class ServerState<T extends object> {
   async set(update: DeepPartial<T>): Promise<void> {
     const current = await this.get();
     const next = { ...current, ...update };
-    
+
     SERVER_STATE.set(this.options.key, next);
     this.cache.set(this.options.key, { value: next, timestamp: Date.now() });
-    
-    this.subscribers.forEach(callback => callback(this.options.key));
+
+    this.subscribers.forEach((callback) => callback(this.options.key));
   }
 
   /**
@@ -68,7 +67,7 @@ export class ServerState<T extends object> {
     const state = await this.get();
     return {
       state,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 
@@ -76,7 +75,7 @@ export class ServerState<T extends object> {
    * Revalidate cache
    */
   async revalidate(tags?: string[]): Promise<void> {
-    if (!tags || tags.some(tag => this.options.cache?.tags?.includes(tag))) {
+    if (!tags || tags.some((tag) => this.options.cache?.tags?.includes(tag))) {
       await this.get(true);
     }
   }
@@ -107,8 +106,8 @@ export function withServerState<T extends object, P extends object>(
       props: {
         ...props,
         initialState,
-        serverState
-      }
+        serverState,
+      },
     };
   };
 }
@@ -158,13 +157,13 @@ export class EdgeState<T extends object> {
     try {
       const current = await this.get();
       const next = { ...current, ...update };
-      
+
       const response = new Response(JSON.stringify(next), {
         headers: {
-          'Cache-Control': this.options.cache?.ttl 
+          'Cache-Control': this.options.cache?.ttl
             ? `s-maxage=${this.options.cache.ttl}`
-            : 'no-store'
-        }
+            : 'no-store',
+        },
       });
 
       await caches.default.put(this.options.key, response);
@@ -184,7 +183,7 @@ export async function fetchWithCache<T>(
   options?: CacheConfig
 ): Promise<T> {
   const cached = await caches.default.match(key);
-  
+
   if (cached && options?.ttl) {
     const data = await cached.json();
     if (Date.now() - data.timestamp < options.ttl) {
@@ -193,17 +192,18 @@ export async function fetchWithCache<T>(
   }
 
   const value = await fetcher();
-  const response = new Response(JSON.stringify({
-    value,
-    timestamp: Date.now()
-  }), {
-    headers: {
-      'Cache-Control': options?.ttl 
-        ? `s-maxage=${options.ttl}`
-        : 'no-store'
+  const response = new Response(
+    JSON.stringify({
+      value,
+      timestamp: Date.now(),
+    }),
+    {
+      headers: {
+        'Cache-Control': options?.ttl ? `s-maxage=${options.ttl}` : 'no-store',
+      },
     }
-  });
+  );
 
   await caches.default.put(key, response);
   return value;
-} 
+}

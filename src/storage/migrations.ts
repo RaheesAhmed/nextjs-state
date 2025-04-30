@@ -71,24 +71,22 @@ export function createStorageConfig<T>(config: {
 
   return {
     key: config.key as any,
-    version: config.version,
+    version: config.version as unknown as string,
     migrations: Object.fromEntries(
       migrationManager
         .getAvailableMigrations()
-        .map(version => [
-          version,
-          (data: unknown) => migrationManager.migrateData(version, data),
-        ])
+        .map((version) => [version, (data: unknown) => migrationManager.migrateData(version, data)])
     ),
     serialize: config.serialize,
-    deserialize: config.deserialize,
+    deserialize: config.deserialize as any,
   };
 }
 
 // Helper functions for common migration patterns
 export const migrationHelpers = {
   // Rename a field
-  renameField: <T>(oldKey: keyof T, newKey: keyof T): MigrationFn<T> =>
+  renameField:
+    <T>(oldKey: keyof T, newKey: keyof T): MigrationFn<T> =>
     ({ data }) => {
       const oldData = data as any;
       if (oldData[oldKey] !== undefined) {
@@ -99,14 +97,16 @@ export const migrationHelpers = {
     },
 
   // Add a new field with default value
-  addField: <T>(key: keyof T, defaultValue: any): MigrationFn<T> =>
+  addField:
+    <T>(key: keyof T, defaultValue: any): MigrationFn<T> =>
     ({ data }) => ({
       ...(data as any),
       [key]: defaultValue,
     }),
 
   // Remove a field
-  removeField: <T>(key: keyof T): MigrationFn<T> =>
+  removeField:
+    <T>(key: keyof T): MigrationFn<T> =>
     ({ data }) => {
       const newData = { ...(data as any) };
       delete newData[key];
@@ -114,22 +114,18 @@ export const migrationHelpers = {
     },
 
   // Transform a field value
-  transformField: <T>(
-    key: keyof T,
-    transform: (value: any) => any
-  ): MigrationFn<T> =>
+  transformField:
+    <T>(key: keyof T, transform: (value: any) => any): MigrationFn<T> =>
     ({ data }) => ({
       ...(data as any),
       [key]: transform((data as any)[key]),
     }),
 
   // Combine multiple migrations
-  compose: <T>(...migrations: MigrationFn<T>[]): MigrationFn<T> =>
+  compose:
+    <T>(...migrations: MigrationFn<T>[]): MigrationFn<T> =>
     (context) =>
-      migrations.reduce(
-        (data, migrate) => migrate({ ...context, data }),
-        context.data
-      ) as T,
+      migrations.reduce((data, migrate) => migrate({ ...context, data }), context.data) as T,
 };
 
 // Example usage:
@@ -148,4 +144,4 @@ const storageConfig = createStorageConfig({
     },
   ],
 });
-*/ 
+*/

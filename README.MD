@@ -1,6 +1,6 @@
-# nextjs-state
+# Next State
 
-Type-safe state management for Next.js and React applications. Simple, lightweight, and performant.
+A modern, type-safe state management solution designed specifically for Next.js applications. Next State provides a minimal yet powerful API with built-in support for server components, persistence, and development tools.
 
 [![npm version](https://badge.fury.io/js/nextjs-state.svg)](https://badge.fury.io/js/nextjs-state)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/nextjs-state)](https://bundlephobia.com/package/nextjs-state)
@@ -8,12 +8,15 @@ Type-safe state management for Next.js and React applications. Simple, lightweig
 
 ## Features
 
-- 🎯 **Type-safe**: Full TypeScript support out of the box
-- ⚡ **Lightweight**: Less than 1KB minified and gzipped
-- 🔄 **Middleware**: Built-in logging and persistence middleware
-- 💾 **Persistence**: Easy state persistence with localStorage
-- 🎨 **Selectors**: Efficient state access with memoization
-- 📦 **Zero dependencies**: Only React as a peer dependency
+- 🎯 **Type-safe**: Full TypeScript support with type inference and strict null checks
+- ⚡ **Lightweight**: Less than 1KB minified and gzipped for optimal bundle size
+- 🔄 **Middleware**: Extensible middleware system for logging, persistence, validation, and more
+- 💾 **Persistence**: Built-in storage adapters for localStorage and indexedDB with migration support
+- 🎨 **Selectors**: Efficient state access with automatic memoization to prevent unnecessary re-renders
+- 🖥️ **DevTools**: Integrated development tools for debugging and time-travel
+- 🚀 **Server Components**: First-class support for Next.js App Router and Server Components
+- 🔄 **Optimistic Updates**: Built-in support for optimistic UI updates with server synchronization
+- 📦 **Zero dependencies**: Only React as a peer dependency for minimal footprint
 
 ## Installation
 
@@ -33,21 +36,47 @@ import { createNextState } from 'nextjs-state';
 // 1. Define your state type
 interface CounterState {
   count: number;
+  lastUpdated: string;
 }
 
 // 2. Create your state
 const { useNextState } = createNextState<CounterState>({
-  initialState: { count: 0 },
+  initialState: {
+    count: 0,
+    lastUpdated: new Date().toISOString(),
+  },
+  // Optional configuration
+  options: {
+    // Enable DevTools in development
+    devTools: process.env.NODE_ENV === 'development',
+    // Persist state to localStorage
+    storage: {
+      key: 'counter-app',
+      version: '1.0',
+    },
+  },
 });
 
 // 3. Use in your components
 function Counter() {
+  // Access the full state
   const { state, setState } = useNextState();
+
+  // Or use a selector for better performance
+  // const count = useNextState(state => state.count);
+
+  const increment = () => {
+    setState({
+      count: state.count + 1,
+      lastUpdated: new Date().toISOString(),
+    });
+  };
 
   return (
     <div>
       <p>Count: {state.count}</p>
-      <button onClick={() => setState((prev) => ({ count: prev.count + 1 }))}>Increment</button>
+      <p>Last Updated: {new Date(state.lastUpdated).toLocaleString()}</p>
+      <button onClick={increment}>Increment</button>
     </div>
   );
 }

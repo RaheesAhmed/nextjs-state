@@ -64,10 +64,7 @@ interface ErrorBoundaryProps extends PropsWithChildren {
 /**
  * Error boundary for state management errors
  */
-export class NextStateErrorBoundary extends Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
+export class NextStateErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { error: null, errorInfo: null };
@@ -84,11 +81,7 @@ export class NextStateErrorBoundary extends Component<
 
   componentDidUpdate(prevProps: ErrorBoundaryProps): void {
     if (this.state.error && this.props.resetKeys) {
-      if (
-        prevProps.resetKeys?.some(
-          (key, i) => key !== this.props.resetKeys?.[i]
-        )
-      ) {
+      if (prevProps.resetKeys?.some((key, i) => key !== this.props.resetKeys?.[i])) {
         this.setState({ error: null, errorInfo: null });
       }
     }
@@ -96,15 +89,17 @@ export class NextStateErrorBoundary extends Component<
 
   render(): React.ReactNode {
     if (this.state.error) {
-      return this.props.fallback || (
-        <div style={{ padding: '20px', color: 'red' }}>
-          <h2>Something went wrong</h2>
-          <details style={{ whiteSpace: 'pre-wrap' }}>
-            {this.state.error.toString()}
-            <br />
-            {this.state.errorInfo?.componentStack}
-          </details>
-        </div>
+      return (
+        this.props.fallback || (
+          <div style={{ padding: '20px', color: 'red' }}>
+            <h2>Something went wrong</h2>
+            <details style={{ whiteSpace: 'pre-wrap' }}>
+              {this.state.error.toString()}
+              <br />
+              {this.state.errorInfo?.componentStack}
+            </details>
+          </div>
+        )
       );
     }
 
@@ -128,9 +123,7 @@ export function NextStateSuspense({ children }: PropsWithChildren) {
     result: null,
   }));
 
-  return (
-    <SuspenseContext.Provider value={state}>{children}</SuspenseContext.Provider>
-  );
+  return <SuspenseContext.Provider value={state}>{children}</SuspenseContext.Provider>;
 }
 
 /**
@@ -187,4 +180,4 @@ export function withNextStateSuspense<P extends object>(
       </Suspense>
     );
   };
-} 
+}

@@ -1,75 +1,90 @@
-// Deep merge utility
-export function deepMerge<T extends object>(target: T, source: Partial<T>): T {
-  const result = { ...target };
-  
-  for (const key in source) {
-    const value = source[key];
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      result[key] = deepMerge(result[key] as object, value as object) as any;
-    } else {
-      result[key] = value as any;
-    }
-  }
-  
-  return result;
-}
+import type { PerformanceMonitor, ListenerSet as IListenerSet } from '../types/types';
 
-// Performance monitoring
-export const createPerformanceMonitor = () => {
-  let updateCount = 0;
-  let totalUpdateTime = 0;
+export function createPerformanceMonitor(): PerformanceMonitor {
+  let updates = 0;
+  let totalTime = 0;
   let lastUpdateTime = 0;
 
   return {
-    trackUpdate: (duration: number) => {
-      updateCount++;
-      totalUpdateTime += duration;
-      lastUpdateTime = duration;
+    now: () => performance.now(),
+    track: (event: string, duration: number) => {
+      if (event === 'update') {
+        updates++;
+        totalTime += duration;
+        lastUpdateTime = duration;
+      }
     },
     getMetrics: () => ({
-      updates: updateCount,
-      avgUpdateTime: totalUpdateTime / updateCount,
-      lastUpdateTime
-    })
+      updates,
+      avgUpdateTime: updates > 0 ? totalTime / updates : 0,
+      lastUpdateTime,
+    }),
   };
-};
+}
 
-// Debug logger
-export const createDebugLogger = (enabled: boolean = false) => ({
-  log: (message: string, data?: any) => {
-    if (enabled) {
-      console.log(`[NextState] ${message}`, data);
-    }
-  },
-  error: (message: string, error?: any) => {
-    if (enabled) {
-      console.error(`[NextState] ${message}`, error);
+export function createDebugLogger(enabled: boolean) {
+  return {
+    log: (message: string, data?: unknown) => {
+      if (enabled) {
+        console.log(`[NextState] ${message}`, data);
+      }
+    },
+    error: (context: string, error: unknown) => {
+      if (enabled) {
+        console.error(`[NextState] Error in ${context}:`, error);
+      }
+    },
+  };
+}
+
+export function deepMerge<T extends object>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+
+  for (const key in source) {
+    const sourceValue = source[key];
+    const targetValue = target[key];
+
+    if (
+      sourceValue &&
+      targetValue &&
+      typeof sourceValue === 'object' &&
+      typeof targetValue === 'object' &&
+      !Array.isArray(sourceValue)
+    ) {
+      result[key] = deepMerge(targetValue, sourceValue as any);
+    } else {
+      result[key] = sourceValue as any;
     }
   }
-});
 
-// Listener Set with type safety
-export class ListenerSet<T extends Function> {
-  private listeners = new Set<T>();
+  return result;
+}
 
-  add(listener: T) {
+export class ListenerSet<T> implements IListenerSet<T> {
+  private listeners = new Set<(state: T) => void>();
+  private debug: boolean;
+
+  constructor(debug: boolean) {
+    this.debug = debug;
+  }
+
+  add(listener: (state: T) => void) {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    if (this.debug) {
+      console.log('[NextState] Listener added, total:', this.listeners.size);
+    }
   }
 
-  remove(listener: T) {
+  delete(listener: (state: T) => void) {
     this.listeners.delete(listener);
+    if (this.debug) {
+      console.log('[NextState] Listener removed, total:', this.listeners.size);
+    }
   }
 
-  notify(...args: any[]) {
-    this.listeners.forEach(listener => listener(...args));
+  notify(state: T, performance: PerformanceMonitor) {
+    const startTime = performance.now();
+    this.listeners.forEach((listener) => listener(state));
+    performance.track('notify', performance.now() - startTime);
   }
-
-  clear() {
-    this.listeners.clear();
-  }
-
-  get size() {
-    return this.listeners.size;
-  }
-} 
+}

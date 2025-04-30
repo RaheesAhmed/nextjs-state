@@ -27,7 +27,7 @@ export const createServerState = <T extends object>(
 
 // Export server-specific middleware
 export { createServerMiddleware } from '../middleware/middleware-registry';
-export { createServerStorage } from '../storage/storage';
+export { createStorage } from '../storage/storage';
 export { createServerCache } from './cache';
 
 // Export server utilities

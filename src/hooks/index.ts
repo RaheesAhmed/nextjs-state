@@ -1,4 +1,4 @@
-import { type NextState } from '../core';
+import { type NextState } from '../types/types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface UseNextStateOptions {
@@ -14,7 +14,7 @@ export function useNextState<T, S>(
   options: UseNextStateOptions = {}
 ): S {
   const [value, setValue] = useState(() => selector(state.getState()));
-  
+
   useEffect(() => {
     return state.subscribe((newState) => {
       setValue(selector(newState));
@@ -38,14 +38,8 @@ export function useNextAction<T, A extends any[]>(
 }
 
 // Selector hooks
-export function useNextSelector<T, S>(
-  state: NextState<T>,
-  selector: (state: T) => S
-) {
-  return useMemo(
-    () => selector(state.getState()),
-    [state, selector, state.getState()]
-  );
+export function useNextSelector<T, S>(state: NextState<T>, selector: (state: T) => S) {
+  return useMemo(() => selector(state.getState()), [state, selector, state.getState()]);
 }
 
 // Async hooks
@@ -99,4 +93,4 @@ export { useNextAsync as useAsync };
 // Export hook utilities
 export { createStateHook } from './create-hook';
 export { withNextState } from './with-next-state';
-export { NextStateProvider } from './provider'; 
+export { NextStateProvider } from './provider';

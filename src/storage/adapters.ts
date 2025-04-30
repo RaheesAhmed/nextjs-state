@@ -17,16 +17,16 @@ export class LocalStorageAdapter<T> implements StorageAdapter<T> {
       if (!item) return null;
 
       const { version, data } = this.config.deserialize?.(item) ?? JSON.parse(item);
-      
+
       if (version === this.config.version) {
         return data as T;
       }
 
       // Handle migration
       if (this.config.migrations?.[version]) {
-        const migratedData = this.config.migrations[version](data);
-        await this.set(key, migratedData);
-        return migratedData;
+        const migratedData = this.config.migrations[version](data as T);
+        await this.set(key, migratedData as T);
+        return migratedData as T;
       }
 
       throw new Error(`No migration found for version ${version}`);
@@ -93,7 +93,7 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
 
   private async initDB(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, this.config.version);
+      const request = indexedDB.open(this.dbName, this.config.version as unknown as number);
 
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
@@ -140,9 +140,9 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
           if (version === this.config.version) {
             resolve(data as T);
           } else if (this.config.migrations?.[version]) {
-            const migratedData = this.config.migrations[version](data);
-            this.set(key, migratedData)
-              .then(() => resolve(migratedData))
+            const migratedData = this.config.migrations[version](data as T);
+            this.set(key, migratedData as T)
+              .then(() => resolve(migratedData as T))
               .catch(reject);
           } else {
             reject(new Error(`No migration found for version ${version}`));
@@ -235,15 +235,15 @@ export class MemoryAdapter<T> implements StorageAdapter<T> {
     if (!item) return null;
 
     const { version, data } = this.config.deserialize?.(item) ?? JSON.parse(item);
-    
+
     if (version === this.config.version) {
       return data as T;
     }
 
     if (this.config.migrations?.[version]) {
-      const migratedData = this.config.migrations[version](data);
-      await this.set(key, migratedData);
-      return migratedData;
+      const migratedData = this.config.migrations[version](data as T);
+      await this.set(key, migratedData as T);
+      return migratedData as T;
     }
 
     throw new Error(`No migration found for version ${version}`);
@@ -282,4 +282,4 @@ export function createStorage<T>(
     default:
       throw new Error(`Unsupported storage type: ${type}`);
   }
-} 
+}

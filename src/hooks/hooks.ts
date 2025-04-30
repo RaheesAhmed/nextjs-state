@@ -13,9 +13,9 @@ export function useServerState<T extends object>(
 
   useEffect(() => {
     mounted.current = true;
-    
+
     // Initial state fetch
-    serverState.get().then(initialState => {
+    serverState.get().then((initialState) => {
       if (mounted.current) {
         setState(initialState);
       }
@@ -57,9 +57,9 @@ export function useOptimisticServerState<T extends object>(
 
   useEffect(() => {
     mounted.current = true;
-    
+
     // Initial state fetch
-    serverState.get().then(initialState => {
+    serverState.get().then((initialState) => {
       if (mounted.current) {
         setState(initialState);
       }
@@ -84,7 +84,7 @@ export function useOptimisticServerState<T extends object>(
   const updateState = useCallback(
     (update: DeepPartial<T>) => {
       // Apply optimistic update locally
-      setState(current => {
+      setState((current) => {
         if (!current) return current;
         const optimisticState = { ...current, ...update };
         return optimisticState;
@@ -94,15 +94,15 @@ export function useOptimisticServerState<T extends object>(
       pendingUpdates.current.push(update);
 
       // Send update to server
-      serverState.set(update).catch(error => {
+      serverState.set(update).catch((error) => {
         console.error('Failed to update server state:', error);
-        
+
         // Rollback optimistic update on error
         if (mounted.current) {
-          setState(current => {
+          setState((current) => {
             if (!current) return current;
             // Remove failed update from pending updates
-            pendingUpdates.current = pendingUpdates.current.filter(u => u !== update);
+            pendingUpdates.current = pendingUpdates.current.filter((u) => u !== update);
             // Reapply remaining pending updates
             return pendingUpdates.current.reduce(
               (state, update) => ({ ...state, ...update }),
@@ -121,10 +121,7 @@ export function useOptimisticServerState<T extends object>(
 /**
  * Hook for server state revalidation
  */
-export function useServerStateRevalidation(
-  serverState: ServerState<unknown>,
-  tags?: string[]
-) {
+export function useServerStateRevalidation(serverState: ServerState<unknown>, tags?: string[]) {
   const revalidate = useCallback(
     async (specificTags?: string[]) => {
       await serverState.revalidate(specificTags ?? tags);
@@ -152,4 +149,4 @@ export function useAutoRevalidation(
 
     return () => clearInterval(timer);
   }, [serverState, tags, interval]);
-} 
+}

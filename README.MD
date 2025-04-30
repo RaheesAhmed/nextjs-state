@@ -361,6 +361,21 @@ function createLoggingMiddleware<T>(): (state: T, nextState: T) => T;
 function createPersistenceMiddleware<T>(key: string): (state: T, nextState: T) => T;
 ```
 
+## Documentation
+
+For more detailed documentation, please visit our documentation site:
+
+- [Getting Started](./docs/getting-started/core-concepts.md) - Learn the core concepts and philosophy
+- [API Reference](./docs/api/api-reference.md) - Complete API documentation
+- [Guides](./docs/guides/) - In-depth guides for specific use cases
+  - [Middleware Guide](./docs/guides/middleware.md) - Learn how to create and use middleware
+  - [Testing Guide](./docs/guides/testing.md) - Best practices for testing
+- [Technical Documentation](./docs/technical_documentation.md) - Detailed technical information
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for more details.
+
 ## License
 
 MIT

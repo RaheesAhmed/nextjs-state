@@ -1,72 +1,232 @@
 # Next State API Reference
 
+This document provides a comprehensive reference for all the APIs available in Next State. Each section includes detailed descriptions, type definitions, and practical examples to help you effectively use the library in your applications.
+
 ## Core API
+
+The core API provides the fundamental building blocks for state management in Next State.
 
 ### `create<T>`
 
-Creates a new state store with type safety and configuration options.
+Creates a new state store with type safety and configuration options. This is the main entry point for creating a state store in your application.
 
 ```typescript
-function create<T extends object>(config: StateConfig<T>): NextStateStore<T>
+function create<T extends object>(config: StateConfig<T>): NextStateStore<T>;
+```
 
-// Example
-const store = create({
+**Parameters:**
+
+- `config`: Configuration object for the state store
+
+**Returns:**
+
+- A state store instance with methods for state management
+
+**Example:**
+
+```typescript
+import { create } from 'next-state';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface AppState {
+  count: number;
+  user: User | null;
+  todos: Array<{ id: string; text: string; completed: boolean }>;
+  theme: 'light' | 'dark';
+}
+
+const store = create<AppState>({
   initialState: {
     count: 0,
-    user: null as User | null,
-    todos: [] as Todo[]
+    user: null,
+    todos: [],
+    theme: 'light',
   },
   options: {
-    devTools: true,
+    // Enable DevTools in development environments
+    devTools: process.env.NODE_ENV === 'development',
+
+    // Configure persistence with localStorage
     storage: {
-      key: 'my-app',
-      version: 1
-    }
-  }
+      key: 'my-app-state',
+      version: 1,
+      // Optional migrations for version changes
+      migrations: {
+        0: (oldState) => ({
+          ...oldState,
+          theme: 'light', // Add new field in migration
+        }),
+      },
+    },
+
+    // Add custom middleware
+    middleware: [loggingMiddleware, validationMiddleware],
+  },
 });
 ```
 
 #### Configuration Options
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `initialState` | `T` | The initial state object |
-| `devTools` | `boolean` | Enable development tools |
-| `storage` | `StorageConfig<T>` | Persistence configuration |
-| `middleware` | `Middleware<T>[]` | Custom middleware |
-| `suspense` | `boolean` | Enable React Suspense |
+| Option               | Type                        | Description                                          | Default     |
+| -------------------- | --------------------------- | ---------------------------------------------------- | ----------- |
+| `initialState`       | `T`                         | The initial state object                             | Required    |
+| `options.devTools`   | `boolean \| DevToolsConfig` | Enable development tools with optional configuration | `false`     |
+| `options.storage`    | `StorageConfig<T>`          | Persistence configuration for saving state           | `undefined` |
+| `options.middleware` | `Middleware<T>[]`           | Array of custom middleware functions                 | `[]`        |
+| `options.suspense`   | `boolean`                   | Enable React Suspense integration                    | `false`     |
+| `options.equality`   | `(a: T, b: T) => boolean`   | Custom equality function for state comparisons       | `Object.is` |
 
 ### React Hooks
 
+Next State provides a set of React hooks for integrating state management into your components.
+
 #### `useNextState`
 
-Subscribe to state changes with automatic updates.
+Subscribe to state changes with automatic updates. This hook allows components to access and react to state changes.
 
 ```typescript
 function useNextState<T, R>(
   selector?: (state: T) => R,
   equalityFn?: (prev: R, next: R) => boolean
-): R
-
-// Example
-const count = useNextState(state => state.count);
-const user = useNextState(state => state.user, Object.is);
+): R;
 ```
+
+**Parameters:**
+
+- `selector`: (Optional) A function that extracts a slice of the state
+- `equalityFn`: (Optional) A function to determine if the selected state has changed
+
+**Returns:**
+
+- The selected state (or the entire state if no selector is provided)
+
+**Examples:**
+
+```typescript
+import { useNextState } from 'next-state';
+
+// Access the entire state
+function CompleteStateComponent() {
+  const { state, setState } = useNextState();
+
+  return (
+    <div>
+      <h1>Count: {state.count}</h1>
+      <button onClick={() => setState({ count: state.count + 1 })}>
+        Increment
+      </button>
+    </div>
+  );
+}
+
+// Access a specific slice of state (more efficient)
+function CounterComponent() {
+  const count = useNextState(state => state.count);
+  const increment = useNextState(state => () => ({
+    count: state.count + 1
+  }));
+
+  return (
+    <div>
+      <h1>Count: {count}</h1>
+      <button onClick={increment}>Increment</button>
+    </div>
+  );
+}
+
+// With custom equality function
+function UserComponent() {
+  const user = useNextState(
+    state => state.user,
+    (prev, next) => prev?.id === next?.id
+  );
+
+  return user ? <div>Hello, {user.name}</div> : <div>Not logged in</div>;
+}
+```
+
+**Performance Considerations:**
+
+- Always use selectors to minimize unnecessary re-renders
+- Provide custom equality functions for complex objects
+- Keep selectors pure and memoize expensive computations
 
 #### `useOptimisticUpdate`
 
-Perform optimistic updates with automatic rollback.
+Perform optimistic updates with automatic rollback on failure. This hook is particularly useful for UI updates that need to feel responsive while waiting for server operations to complete.
 
 ```typescript
 function useOptimisticUpdate<T>(): [
-  (update: DeepPartial<T>) => void,
-  boolean
-]
-
-// Example
-const [update, isPending] = useOptimisticUpdate();
-update({ count: count + 1 });
+  (update: DeepPartial<T>, serverAction: Promise<any>) => void,
+  boolean,
+];
 ```
+
+**Parameters:**
+
+- None
+
+**Returns:**
+
+- A tuple containing:
+  - An update function that takes a state update and a promise for the server action
+  - A boolean indicating if there's a pending update
+
+**Example:**
+
+```typescript
+import { useOptimisticUpdate } from 'next-state';
+
+function TodoList() {
+  const todos = useNextState(state => state.todos);
+  const [optimisticUpdate, isPending] = useOptimisticUpdate();
+
+  const toggleTodo = async (id) => {
+    // Create an optimistic update
+    const newTodos = todos.map(todo =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    );
+
+    // Apply optimistic update and provide server action
+    optimisticUpdate(
+      { todos: newTodos },
+      api.updateTodo(id, { completed: !todos.find(t => t.id === id).completed })
+    );
+
+    // The UI will update immediately, and if the server request fails,
+    // the state will automatically roll back to its previous value
+  };
+
+  return (
+    <div>
+      {isPending && <div className="loading-indicator">Saving...</div>}
+      <ul>
+        {todos.map(todo => (
+          <li
+            key={todo.id}
+            onClick={() => toggleTodo(todo.id)}
+            style={{ opacity: isPending ? 0.7 : 1 }}
+          >
+            {todo.text} {todo.completed ? '✓' : '○'}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+**Use Cases:**
+
+- Form submissions with immediate UI feedback
+- Toggle actions (like/unlike, follow/unfollow)
+- List item operations (add, remove, update)
+- Any action where user experience benefits from immediate feedback
 
 #### `useNextAction`
 
@@ -79,15 +239,13 @@ function useNextAction<T, P>(
   execute: (payload: P) => Promise<void>;
   isLoading: boolean;
   error: Error | null;
-}
+};
 
 // Example
-const { execute, isLoading } = useNextAction(
-  async (id: string) => {
-    const user = await api.getUser(id);
-    return { user };
-  }
-);
+const { execute, isLoading } = useNextAction(async (id: string) => {
+  const user = await api.getUser(id);
+  return { user };
+});
 ```
 
 ### Server Integration
@@ -101,12 +259,12 @@ function withServerState<T, P>(
   Component: React.ComponentType<P>,
   config: StateConfig<T>,
   options: ServerOptions
-): React.ComponentType<P>
+): React.ComponentType<P>;
 
 // Example
 export default withServerState(TodoApp, config, {
   key: 'todos',
-  cache: { ttl: 60000 }
+  cache: { ttl: 60000 },
 });
 ```
 
@@ -118,14 +276,12 @@ Create server-side actions with optimistic updates.
 function createServerAction<T, P>(
   serverState: ServerState<T>,
   action: (payload: P) => Promise<DeepPartial<T>>
-): (payload: P) => Promise<void>
+): (payload: P) => Promise<void>;
 
 // Example
-const addTodo = createServerAction(serverState, 
-  async (text: string) => ({
-    todos: [{ id: Date.now(), text }]
-  })
-);
+const addTodo = createServerAction(serverState, async (text: string) => ({
+  todos: [{ id: Date.now(), text }],
+}));
 ```
 
 ### Storage
@@ -151,10 +307,10 @@ const config = {
     migrations: {
       0: (oldState) => ({
         ...oldState,
-        newField: 'default'
-      })
-    }
-  }
+        newField: 'default',
+      }),
+    },
+  },
 };
 ```
 
@@ -193,9 +349,9 @@ const store = create({
     devTools: {
       name: 'MyApp',
       maxAge: 50,
-      actionFilters: ['SET_USER']
-    }
-  }
+      actionFilters: ['SET_USER'],
+    },
+  },
 });
 ```
 
@@ -214,7 +370,7 @@ interface NextStateError {
 throw new NextStateError({
   code: 'INVALID_STATE',
   message: 'Invalid state update',
-  details: { update }
+  details: { update },
 });
 ```
 
@@ -241,7 +397,7 @@ const loggingMiddleware: Middleware<T> = {
   },
   after: (state) => {
     console.log('After update:', state);
-  }
+  },
 };
 ```
 
@@ -286,15 +442,15 @@ const loggingMiddleware: Middleware<T> = {
 ```typescript
 // Before (1.x)
 const store = createStore({
-  state: initialState
+  state: initialState,
 });
 
 // After (2.x)
 const store = create({
   initialState,
   options: {
-    devTools: true
-  }
+    devTools: true,
+  },
 });
 ```
 
@@ -313,12 +469,12 @@ const store = create<AppState>({
   initialState: {
     user: null,
     todos: [],
-    settings: defaultSettings
-  }
+    settings: defaultSettings,
+  },
 });
 
 // Type-safe selectors
-const user = useNextState(state => state.user);
+const user = useNextState((state) => state.user);
 // Type-safe updates
 store.setState({ user: newUser });
 ```
